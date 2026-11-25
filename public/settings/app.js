@@ -1,0 +1,14 @@
+import{boot,S,el,icon,av,nameEl,go,setTitle,signOut,auth,canBg,bgSheet,isStaffRole,myBadgeSheet,manageBadgesSheet,badgeOf,communitySheet,addBadgeSheet}from'/shared.js';
+const c=await boot({tab:'settings'});c.classList.add('pad');
+const row=(ic,label,fn,cls='')=>{const b=el('button','li '+cls);b.append(icon(ic,22),el('b','grow',label),icon('next',18));b.onclick=fn;return b};
+S.onChange=()=>{setTitle('Pengaturan',S.comms.find(x=>x.id===S.cid)?.name||'');c.replaceChildren();
+  const card=el('div','panel prof'),t=el('div','grow'),n=nameEl(S.me);n.classList.add('big');
+  t.append(n,el('div','muted','@'+S.me.username+' - '+S.me.role));if(S.me.bio)t.append(el('p','',S.me.bio));card.append(av(S.me,84),t);
+  const w=el('div','stack');w.append(card,row('edit','Edit profil',()=>go('/profile/',{c:S.cid})));
+  if(isStaffRole(S.me)||(S.me.badges||[]).some(badgeOf))w.append(row('shield','Lencana saya (pakai / lepas)',myBadgeSheet));
+  if(isStaffRole(S.me))w.append(row('shield','Tambah lencana baru (PNG)',addBadgeSheet),row('users','Kelola lencana member',manageBadgesSheet));
+  if(isStaffRole(S.me)&&S.cid)w.append(row('users','Profil komunitas (nama dan foto)',communitySheet));
+  if(canBg())w.append(row('image','Ganti background',bgSheet));
+  if(S.me.role==='owner')w.append(row('shield','Kelola akun',()=>go('/admin/',{c:S.cid})));
+  w.append(row('out','Keluar',async()=>{await signOut(auth);location.replace('/')},'danger'));c.append(w)};
+S.onChange();
