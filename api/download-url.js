@@ -5,7 +5,7 @@ import { applyCors, requireMember } from '../lib/auth.js';
 
 const DOWNLOAD_URL_TTL_SECONDS = 3600;
 const MAX_KEYS_PER_REQUEST = 30;
-const KEY_PATTERN = /^uploads\/[A-Za-z0-9_-]+\/[0-9a-f-]{36}\.(jpg|png|webp|gif|mp4|webm|mov)$/;
+const KEY_PATTERN = /^uploads\/[A-Za-z0-9_-]+\/[0-9a-f-]{36}\.(jpg|png|webp|gif|mp4|webm|mov|weba|ogg|m4a|mp3|wav|pdf|zip|bin|txt|csv|doc|docx|xls|xlsx|ppt|pptx)$/;
 
 export default async function handler(req, res) {
   if (applyCors(req, res)) return;
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   const uid = await requireMember(req, res);
   if (!uid) return;
 
-  const { keys } = req.body || {};
+  const { keys, names } = req.body || {};
   const validList =
     Array.isArray(keys) &&
     keys.length > 0 &&
@@ -32,7 +32,15 @@ export default async function handler(req, res) {
   try {
     const entries = await Promise.all(
       keys.map(async (key) => {
-        const command = new GetObjectCommand({ Bucket: getBucket(), Key: key });
+        // Nama asli file (opsional) supaya file terunduh dengan nama aslinya
+        const rawName = names && typeof names[key] === 'string' ? names[key] : '';
+        const clean = rawName.replace(/[\u0000-\u001f\u007f"\\/]/g, '_').slice(0, 120);
+        const params = { Bucket: getBucket(), Key: key };
+        if (clean) {
+          const ascii = clean.replace(/[^\x20-\x7e]/g, '_');
+          params.ResponseContentDisposition = `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(clean)}`;
+        }
+        const command = new GetObjectCommand(params);
         const url = await getSignedUrl(getClient(), command, {
           expiresIn: DOWNLOAD_URL_TTL_SECONDS,
         });
