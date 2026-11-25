@@ -73,7 +73,8 @@ function msgEl(d){const m=d.data(),u=S.users.get(m.uid)||{name:m.name},mem=S.mem
   if(m.uid===S.me.uid||canManage()){const x=el('button','lnk','Hapus');x.onclick=()=>confirm('Hapus pesan ini?')&&deleteDoc(d.ref);h.append(x)}
   body.append(h);const bub=el('div','bub');let has=false;
   if(m.text){bub.append(rich(m.text,m));has=true}
-  if(m.fileData){const au=(m.fileType||'').startsWith('audio'),e=el(au?'audio':'img');e.src=m.fileData;if(au)e.controls=true;else e.alt='Lampiran';bub.append(e);has=true}
+  if(m.fileData&&m.vn){bub.append(vnEl(d.id,m.fileData,m.dur||0));has=true}
+  else if(m.fileData){const au=(m.fileType||'').startsWith('audio'),e=el(au?'audio':'img');e.src=m.fileData;if(au)e.controls=true;else e.alt='Lampiran';bub.append(e);has=true}
   if(m.fileKey&&urls.get(m.fileKey)){const url=urls.get(m.fileKey),ft=m.fileType||'';
     if(m.vn)bub.append(vnEl(d.id,url,m.dur||0));
     else if(ft.startsWith('video/')){const e=el('video');e.src=url;e.controls=true;bub.append(e)}
@@ -123,13 +124,13 @@ $('#send').onsubmit=async e=>{e.preventDefault();if(!ready)return;
     $('#text').value='';sug.hidden=true;setPicked(null)}catch(x){alert(x.message)}
   $('#sendBtn').disabled=!ready};
 // ---- Rekam VN (ketuk mic untuk mulai, ketuk kirim untuk mengirim, Batal untuk membuang) ----
-const MAXREC=300;let rec=null;
+const MAXREC=170;let rec=null;
 const recMime=()=>window.MediaRecorder?['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'].find(t=>MediaRecorder.isTypeSupported(t))||'':'';
 function recUi(on){$('#recbar').hidden=!on;['.field','#attach','#mic'].forEach(x=>$(x).hidden=on)}
 async function startRec(){if(!ready||rec)return;
   if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){alert('Browser ini belum mendukung rekam suara');return}
   let stream;try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}catch{alert('Mikrofon tidak bisa diakses, cek izin mikrofon di browser');return}
-  const mime=recMime(),mr=new MediaRecorder(stream,mime?{mimeType:mime}:undefined),r={mr,stream,chunks:[],t0:Date.now(),send:false,cid:S.cid,chid:S.chid};
+  const mime=recMime(),mr=new MediaRecorder(stream,mime?{mimeType:mime,audioBitsPerSecond:24000}:{audioBitsPerSecond:24000}),r={mr,stream,chunks:[],t0:Date.now(),send:false,cid:S.cid,chid:S.chid};
   mr.ondataavailable=e=>{if(e.data&&e.data.size)r.chunks.push(e.data)};
   mr.onstop=()=>finishRec(r);
   rec=r;mr.start(1000);recUi(true);$('#rtime').textContent='0:00';
@@ -140,8 +141,9 @@ async function finishRec(r){r.stream.getTracks().forEach(t=>t.stop());clearInter
   if(dur<1||!r.chunks.length){alert('Rekaman terlalu pendek');return}
   const type=((r.mr.mimeType||'audio/webm').split(';')[0])||'audio/webm',blob=new Blob(r.chunks,{type});
   $('#sendBtn').disabled=true;$('#mic').disabled=true;
-  try{const key=await upload(blob,type);
-    await addDoc(collection(db,`communities/${r.cid}/channels/${r.chid}/messages`),{uid:S.me.uid,name:S.me.name,text:'',createdAt:Date.now(),fileKey:key,fileType:type,vn:true,dur:Math.round(dur)})}
+  try{if(blob.size>560*1024)throw Error('VN terlalu panjang, maksimal sekitar 2,5 menit. Rekam lebih singkat.');
+    const data=await new Promise((ok,no)=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.onerror=()=>no(Error('VN tidak bisa dibaca'));fr.readAsDataURL(blob)});
+    await addDoc(collection(db,`communities/${r.cid}/channels/${r.chid}/messages`),{uid:S.me.uid,name:S.me.name,text:'',createdAt:Date.now(),fileData:data,fileType:type,vn:true,dur:Math.round(dur)})}
   catch(x){alert(x.message)}
   $('#sendBtn').disabled=!ready;$('#mic').disabled=!ready}
 $('#mic').onclick=startRec;$('#rcancel').onclick=()=>stopRec(false);
