@@ -15,6 +15,24 @@ const FILE_RULES = {
   'video/mp4': { ext: 'mp4', maxBytes: 50 * MB },
   'video/webm': { ext: 'webm', maxBytes: 50 * MB },
   'video/quicktime': { ext: 'mov', maxBytes: 50 * MB },
+  // VN (voice note) hasil rekaman browser
+  'audio/webm': { ext: 'weba', maxBytes: 10 * MB },
+  'audio/ogg': { ext: 'ogg', maxBytes: 10 * MB },
+  'audio/mp4': { ext: 'm4a', maxBytes: 10 * MB },
+  'audio/mpeg': { ext: 'mp3', maxBytes: 10 * MB },
+  'audio/wav': { ext: 'wav', maxBytes: 10 * MB },
+  // File umum (dokumen, arsip, dll). Tipe lain jatuh ke application/octet-stream
+  'application/pdf': { ext: 'pdf', maxBytes: 25 * MB },
+  'application/zip': { ext: 'zip', maxBytes: 25 * MB },
+  'application/octet-stream': { ext: 'bin', maxBytes: 25 * MB },
+  'text/plain': { ext: 'txt', maxBytes: 25 * MB },
+  'text/csv': { ext: 'csv', maxBytes: 25 * MB },
+  'application/msword': { ext: 'doc', maxBytes: 25 * MB },
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { ext: 'docx', maxBytes: 25 * MB },
+  'application/vnd.ms-excel': { ext: 'xls', maxBytes: 25 * MB },
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { ext: 'xlsx', maxBytes: 25 * MB },
+  'application/vnd.ms-powerpoint': { ext: 'ppt', maxBytes: 25 * MB },
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': { ext: 'pptx', maxBytes: 25 * MB },
 };
 
 export default async function handler(req, res) {
