@@ -114,3 +114,18 @@ img.logo{width:96px;height:96px;border-radius:22px;object-fit:cover;background:#
 .li.static .grow{flex:1 1 150px}
 .li.static select{flex:1 1 140px;width:auto;min-width:0;max-width:100%}
 
+
+/* VN dan kartu file */
+.vn{display:flex;align-items:center;gap:10px;min-width:230px;max-width:100%;margin-top:4px}
+.vnp{width:42px;height:42px;padding:0;border-radius:50%;display:grid;place-items:center;flex:none}
+.vnm{flex:1;min-width:0;display:grid;gap:2px}.vns{width:100%;padding:0;margin:0;background:none;accent-color:var(--ac)}
+.vnt{color:var(--mu,#a9a3d6);font-size:12px}
+.vnx{padding:4px 9px;border-radius:999px;font-size:12px;background:var(--s1);color:var(--tx);flex:none}
+.fcard{display:flex;align-items:center;gap:12px;padding:10px 12px;margin-top:4px;min-width:220px;border-radius:14px;background:var(--s1);color:var(--tx);text-decoration:none}
+.fcard b{display:block;word-break:break-all}.fcard small{display:block}
+.recbar{flex:1;display:flex;align-items:center;gap:10px;background:var(--s2);border-radius:999px;padding:8px 10px 8px 18px;min-width:0}
+.recbar[hidden]{display:none}.recbar .grow{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recdot{width:12px;height:12px;border-radius:50%;background:#ef4444;flex:none;animation:recp 1s infinite}
+@keyframes recp{50%{opacity:.25}}
+.field[hidden],.rbtn[hidden]{display:none}
+.vns{border:0;height:auto;box-shadow:none}
