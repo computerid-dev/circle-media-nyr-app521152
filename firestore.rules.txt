@@ -1,0 +1,166 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function myRole() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role; }
+    function isStaff() { return signedIn() && myRole() in ['owner', 'admin']; }
+    function isOwner() { return signedIn() && myRole() == 'owner'; }
+    function isCreator(c) { return get(/databases/$(database)/documents/communities/$(c)).data.createdBy == request.auth.uid; }
+    function isModMember(c) {
+      return exists(/databases/$(database)/documents/communities/$(c)/members/$(request.auth.uid))
+        && get(/databases/$(database)/documents/communities/$(c)/members/$(request.auth.uid)).data.mod == true;
+    }
+    function isMod(c) { return isStaff() || isCreator(c) || isModMember(c); }
+    // Anggota komunitas: owner/admin, pembuat komunitas, atau member yang sudah disetujui
+    function isIn(c) {
+      return isStaff() || isCreator(c)
+        || exists(/databases/$(database)/documents/communities/$(c)/people/$(request.auth.uid));
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow update: if
+        // Diri sendiri: profil, penanda online, dan lencana yang dipakai (member hanya boleh yang diberikan padanya)
+        (request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'bio', 'avatarKey', 'avatar', 'lastSeen', 'badge', 'pub'])
+          && (!('pub' in request.resource.data) || (request.resource.data.pub is string && request.resource.data.pub.size() < 400))
+          && (!('avatar' in request.resource.data) || request.resource.data.avatar.size() < 100000)
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['badge'])
+              || request.resource.data.badge == null
+              || isStaff()
+              || request.resource.data.badge in resource.data.get('badges', [])))
+        // Owner: centang biru akun lain
+        || (isOwner()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verified']))
+        // Owner/admin: memberi atau mencabut lencana
+        || (isStaff()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['badges'])
+          && request.resource.data.badges is list
+          && request.resource.data.badges.size() <= 20);
+
+      // Notifikasi mention (hanya dibaca pemiliknya; pengirim harus anggota komunitas; @semua hanya owner/admin)
+      match /notifs/{nid} {
+        allow read, delete: if signedIn() && request.auth.uid == userId;
+        allow update: if signedIn() && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+        allow create: if signedIn() && request.resource.data.from == request.auth.uid
+          && request.resource.data.keys().hasOnly(['type', 'cid', 'chid', 'chName', 'from', 'fromName', 'text', 'read', 'createdAt'])
+          && request.resource.data.read == false
+          && request.resource.data.type in ['mention', 'all']
+          && (request.resource.data.type != 'all' || isStaff())
+          && request.resource.data.text.size() <= 200
+          && isIn(request.resource.data.cid);
+      }
+    }
+
+    // Lencana buatan owner/admin (gambar PNG kecil)
+    match /badges/{bid} {
+      allow read: if signedIn();
+      allow create, update: if isStaff()
+        && request.resource.data.keys().hasOnly(['name', 'img', 'by', 'at'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30
+        && request.resource.data.img is string && request.resource.data.img.size() < 90000
+        && request.resource.data.img.matches('^data:image/png;base64,.*');
+      allow delete: if isStaff();
+    }
+
+    // Cadangan kunci privat terenkripsi (hanya terbaca dan tertulis oleh pemiliknya)
+    match /vaults/{userId} {
+      allow read, delete: if signedIn() && request.auth.uid == userId;
+      allow create, update: if signedIn() && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['salt', 'iv', 'wrapped', 'at']);
+    }
+
+    // Chat pribadi end-to-end: server hanya menyimpan teks sandi (iv + ct), id percakapan = dua uid diurutkan
+    match /dms/{pid} {
+      allow read: if signedIn() && request.auth.uid in resource.data.members;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['members', 'updatedAt', 'last'])
+        && request.resource.data.members.size() == 2
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.members.hasAll(pid.split('_'));
+      allow update: if signedIn() && request.auth.uid in resource.data.members
+        && request.resource.data.keys().hasOnly(['members', 'updatedAt', 'last'])
+        && request.resource.data.members == resource.data.members;
+
+      match /messages/{messageId} {
+        allow read: if signedIn() && request.auth.uid in get(/databases/$(database)/documents/dms/$(pid)).data.members;
+        allow create: if signedIn() && request.resource.data.from == request.auth.uid
+          && request.auth.uid in get(/databases/$(database)/documents/dms/$(pid)).data.members
+          && request.resource.data.keys().hasOnly(['from', 'iv', 'ct', 'fk', 'fd', 'createdAt'])
+          && (!('fd' in request.resource.data) || (request.resource.data.fd is string && request.resource.data.fd.size() < 850000))
+          && request.resource.data.ct.size() < 4000
+          && (!('fk' in request.resource.data) || (request.resource.data.fk is string && request.resource.data.fk.size() < 200));
+        allow delete: if signedIn() && resource.data.from == request.auth.uid;
+      }
+    }
+
+    // Background aplikasi: semua anggota bisa melihat, hanya owner/admin yang boleh mengganti
+    match /settings/{docId} {
+      allow read: if signedIn();
+      allow write: if isStaff()
+        && request.resource.data.keys().hasOnly(['bg', 'by', 'at'])
+        && request.resource.data.bg.keys().hasOnly(['kind', 'value'])
+        && request.resource.data.bg.value.size() < 700000;
+    }
+
+    match /communities/{c} {
+      // Daftar komunitas boleh dilihat semua, isinya hanya untuk anggota yang disetujui
+      allow read: if signedIn();
+      allow create: if isStaff() && request.resource.data.createdBy == request.auth.uid;
+      // Nama dan foto komunitas: hanya owner dan admin
+      allow update: if isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'avatar'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40
+        && (request.resource.data.get('avatar', null) == null || (request.resource.data.avatar is string && request.resource.data.avatar.size() < 90000));
+      allow delete: if isMod(c);
+
+      // Anggota yang sudah disetujui
+      match /people/{userId} {
+        allow get: if signedIn();
+        allow list: if isIn(c);
+        allow write: if isMod(c);
+      }
+      // Permintaan bergabung: member membuat permintaan sendiri, owner/admin yang menyetujui
+      match /requests/{userId} {
+        allow get: if signedIn() && (request.auth.uid == userId || isMod(c));
+        allow list: if isMod(c);
+        allow create: if request.auth.uid == userId
+          && request.resource.data.keys().hasOnly(['name', 'at']);
+        allow delete: if request.auth.uid == userId || isMod(c);
+      }
+
+      match /roles/{roleId} {
+        allow read: if isIn(c);
+        allow write: if isMod(c);
+      }
+      match /members/{userId} {
+        allow read: if isIn(c);
+        allow write: if isMod(c);
+      }
+      match /channels/{channelId} {
+        allow read: if isIn(c);
+        allow write: if isMod(c);
+
+        match /messages/{messageId} {
+          allow read: if isIn(c);
+          allow create: if isIn(c) && request.resource.data.uid == request.auth.uid
+            && (!('fileData' in request.resource.data) || request.resource.data.fileData.size() < 800000);
+          allow delete: if isMod(c) || resource.data.uid == request.auth.uid;
+          // Reaksi emoji: anggota komunitas boleh, tapi hanya field reactions
+          allow update: if isIn(c)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']);
+        }
+        // Ruang suara: kehadiran peserta dan sinyal WebRTC
+        match /voice/{userId} {
+          allow read: if isIn(c);
+          allow write: if isIn(c) && request.auth.uid == userId;
+        }
+        match /signals/{sigId} {
+          allow create: if isIn(c) && request.resource.data.from == request.auth.uid;
+          allow read, delete: if signedIn() && resource.data.to == request.auth.uid;
+        }
+      }
+    }
+  }
+}
