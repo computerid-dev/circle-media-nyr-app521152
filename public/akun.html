@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<script>if(!['circle-media-nyr-app.vercel.app','localhost','127.0.0.1'].includes(location.hostname)){document.write('<body style="margin:0;height:100vh;display:grid;place-items:center;background:#0c0a1f;color:#f3f1ff;font-family:system-ui">link tidak resmi! Tidak dapat dibuka!</body>');throw new Error('blocked')}</script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<title>Pembuat Akun Claude of Anarchy</title>
+<style>
+:root{--bg:#0c0a1f;--panel:#151131;--line:#2b2556;--text:#f3f1ff;--muted:#9d97cc;--accent:#7058ff;--r:16px}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;min-height:100vh;display:grid;place-items:start center;padding:24px 12px;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}
+.card{width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:24px;box-shadow:none;display:grid;gap:14px}
+h2,h3{margin:0}h3{font-size:16px}
+form{display:grid;gap:10px}
+label{display:grid;gap:4px;color:var(--muted);font-size:13px}
+input,select,button{font:inherit;color:inherit;border-radius:var(--r)}
+input,select{width:100%;background:var(--bg);border:1px solid var(--line);padding:9px 12px}
+button{background:var(--accent);border:0;padding:9px 14px;cursor:pointer;transition:opacity .15s}
+button:hover{opacity:.9}button:disabled{opacity:.5;cursor:default}
+button.ghost{background:transparent;border:1px solid var(--line)}
+:is(input,select,button,summary):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;gap:8px}.row input{flex:1}
+details{border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
+summary{cursor:pointer;color:var(--muted)}
+details form{margin-top:10px}
+.msg{margin:0;min-height:1.3em;font-size:14px}.err{color:#e5736f}.ok{color:#6cc39a}
+#list{display:grid;gap:8px;padding:0;margin:0;list-style:none}
+#list li{display:flex;justify-content:space-between;gap:8px;align-items:center;border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;word-break:break-all}
+#list small{color:var(--muted)}
+</style>
+</head>
+<body>
+<main class="card">
+ <h2>Pembuat Akun Claude of Anarchy</h2>
+ <label>URL backend
+  <input id="base" placeholder="https://nama-project.vercel.app" inputmode="url">
+ </label>
+
+ <details>
+  <summary>Buat akun owner pertama</summary>
+  <form id="setupForm">
+   <label>Setup secret (OWNER_SETUP_SECRET)<input id="s_secret" type="password" required></label>
+   <label>Username<input id="s_user" oninput="this.value=this.value.toLowerCase()" pattern="[a-z0-9_]{3,20}" required></label>
+   <label>Password<input id="s_pass" type="password" minlength="6" required></label>
+   <label>Nama tampilan<input id="s_name"></label>
+   <p id="s_msg" class="msg"></p>
+   <button>Buat owner</button>
+  </form>
+ </details>
+
+ <form id="loginForm">
+  <h3>Masuk sebagai owner</h3>
+  <label>Username<input id="l_user" autocomplete="username" required></label>
+  <label>Password<input id="l_pass" type="password" autocomplete="current-password" required></label>
+  <p id="l_msg" class="msg err"></p>
+  <button>Masuk</button>
+ </form>
+
+ <section id="panel" hidden style="display:grid;gap:14px">
+  <form id="memberForm">
+   <h3>Akun baru</h3>
+   <label>Username (huruf kecil, angka, underscore)<input id="m_user" oninput="this.value=this.value.toLowerCase()" pattern="[a-z0-9_]{3,20}" required></label>
+   <label>Password
+    <span class="row"><input id="m_pass" minlength="6" required><button type="button" class="ghost" id="gen">Acak</button></span>
+   </label>
+   <label>Nama tampilan<input id="m_name"></label>
+   <label>Role<select id="m_role"><option value="member">Member</option><option value="admin">Admin</option></select></label>
+   <p id="m_msg" class="msg"></p>
+   <button id="m_btn">Buat akun</button>
+  </form>
+  <div>
+   <h3>Dibuat sesi ini</h3>
+   <ul id="list"></ul>
+  </div>
+ </section>
+</main>
+
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {getAuth,signInWithEmailAndPassword} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+const $ = (s) => document.querySelector(s);
+let auth = null;
+
+$('#base').value = location.protocol.startsWith('http') ? location.origin : '';
+const baseUrl = () => $('#base').value.trim().replace(/\/$/, '');
+
+async function ensureAuth() {
+  if (auth) return auth;
+  const res = await fetch(`${baseUrl()}/api/config`);
+  if (!res.ok) throw new Error('Backend tidak bisa dihubungi, cek URL');
+  auth = getAuth(initializeApp(await res.json()));
+  return auth;
+}
+
+async function post(body, withToken) {
+  const headers = {'Content-Type': 'application/json'};
+  if (withToken) headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+  const res = await fetch(`${baseUrl()}/api/create-member`, {method: 'POST', headers, body: JSON.stringify(body)});
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Permintaan gagal');
+  return data;
+}
+
+function say(el, text, ok = false) {
+  el.textContent = text;
+  el.className = 'msg ' + (ok ? 'ok' : 'err');
+}
+
+$('#gen').onclick = () => {
+  const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  $('#m_pass').value = Array.from(bytes, (b) => chars[b % chars.length]).join('');
+};
+
+$('#setupForm').onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const d = await post({setupSecret: $('#s_secret').value, username: $('#s_user').value.trim(), password: $('#s_pass').value, name: $('#s_name').value.trim()}, false);
+    say($('#s_msg'), `Owner "${d.username}" dibuat. Sekarang masuk di bawah.`, true);
+  } catch (err) { say($('#s_msg'), err.message); }
+};
+
+$('#loginForm').onsubmit = async (e) => {
+  e.preventDefault();
+  $('#l_msg').textContent = '';
+  try {
+    const a = await ensureAuth();
+    await signInWithEmailAndPassword(a, `${$('#l_user').value.trim().toLowerCase()}@circle.local`, $('#l_pass').value);
+    $('#loginForm').hidden = true;
+    $('#panel').hidden = false;
+  } catch (err) {
+    $('#l_msg').textContent = err.code?.startsWith('auth/') ? 'Username atau password salah' : err.message;
+  }
+};
+
+$('#memberForm').onsubmit = async (e) => {
+  e.preventDefault();
+  $('#m_btn').disabled = true;
+  const body = {username: $('#m_user').value.trim(), password: $('#m_pass').value, name: $('#m_name').value.trim(), role: $('#m_role').value};
+  try {
+    const d = await post(body, true);
+    addResult(d.username, body.password, d.role);
+    say($('#m_msg'), 'Akun berhasil dibuat', true);
+    $('#memberForm').reset();
+  } catch (err) { say($('#m_msg'), err.message); }
+  $('#m_btn').disabled = false;
+};
+
+function addResult(username, password, role) {
+  const li = document.createElement('li');
+  const info = document.createElement('div');
+  info.textContent = `${username} / ${password} `;
+  const tag = document.createElement('small');
+  tag.textContent = role;
+  info.append(tag);
+  const copy = document.createElement('button');
+  copy.className = 'ghost'; copy.textContent = 'Salin';
+  copy.onclick = async () => {
+    await navigator.clipboard.writeText(`Username: ${username}\nPassword: ${password}`);
+    copy.textContent = 'Tersalin';
+  };
+  li.append(info, copy);
+  $('#list').prepend(li);
+}
+</script>
+</body>
+</html>
