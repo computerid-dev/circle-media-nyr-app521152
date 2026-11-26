@@ -210,7 +210,7 @@ function sync(){if(S.cid&&!S.started.has(S.cid)&&isApproved(S.cid)===true){S.sta
 if(!S.cid&&S.opts.needCommunity){const f=S.comms.find(c=>isApproved(c.id)===true);if(f){history.replaceState(null,'','?c='+f.id);S.cid=f.id;S.started.add(f.id);watchCommunity(f.id)}}
 drawGate();drawC();changed()}
 // Penanda online: perbarui lastSeen tiap menit
-const beat=()=>updateDoc(doc(db,'users',user.uid),{lastSeen:Date.now()}).catch(()=>{});beat();setInterval(beat,60000);
+const beat=()=>updateDoc(doc(db,'users',user.uid),{lastSeen:Date.now()}).catch(()=>{});beat();setInterval(beat,60000);import('/push.js').then(m=>m.initPush()).catch(()=>{});
 onSnapshot(collection(db,'badges'),q=>{BADGES.length=0;BADGES.push(...BASE_BADGES,...q.docs.map(d=>({id:d.id,custom:true,...d.data()})).sort((a,b)=>(a.at||0)-(b.at||0)));changed()},()=>{});
 // Notifikasi mention: hanya di website (bel di header + popup), tidak ada push ke luar
 {let first=true;const baseTitle=document.title,bell=el('button','ib'),dot=el('span','ndot');bell.setAttribute('aria-label','Notifikasi');bell.append(icon('bell',24),dot);$('#acts').prepend(bell);S.notifs=[];
