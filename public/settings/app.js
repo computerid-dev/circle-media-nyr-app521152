@@ -1,4 +1,5 @@
 import{boot,S,el,icon,av,nameEl,go,setTitle,signOut,auth,canBg,bgSheet,isStaffRole,myBadgeSheet,manageBadgesSheet,badgeOf,communitySheet,addBadgeSheet}from'/shared.js';
+import{dropPush}from'/push.js';
 const c=await boot({tab:'settings'});c.classList.add('pad');
 const row=(ic,label,fn,cls='')=>{const b=el('button','li '+cls);b.append(icon(ic,22),el('b','grow',label),icon('next',18));b.onclick=fn;return b};
 S.onChange=()=>{setTitle('Pengaturan',S.comms.find(x=>x.id===S.cid)?.name||'');c.replaceChildren();
@@ -10,5 +11,5 @@ S.onChange=()=>{setTitle('Pengaturan',S.comms.find(x=>x.id===S.cid)?.name||'');c
   if(isStaffRole(S.me)&&S.cid)w.append(row('users','Profil komunitas (nama dan foto)',communitySheet));
   if(canBg())w.append(row('image','Ganti background',bgSheet));
   if(S.me.role==='owner')w.append(row('shield','Kelola akun',()=>go('/admin/',{c:S.cid})));
-  w.append(row('out','Keluar',async()=>{await signOut(auth);location.replace('/')},'danger'));c.append(w)};
+  w.append(row('out','Keluar',async()=>{await dropPush();await signOut(auth);location.replace('/')},'danger'));c.append(w)};
 S.onChange();
