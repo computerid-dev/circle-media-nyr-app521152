@@ -3,14 +3,14 @@ const c=await boot({needCommunity:true,tab:'channel'});
 c.classList.add('pad');
 c.innerHTML='<div class="vhero"><div class="hi" id="vic"></div><h3 id="vtitle">Ruang suara</h3><p class="muted" id="vempty">Belum ada yang di room ini.</p></div><div id="vlist" class="stack"></div><div class="row2"><button id="vchat" class="w">Ke chat teks</button><button id="vjoin" class="g">Gabung suara</button><button id="vmute" class="w" hidden>Mute</button><button id="vleave" class="r" hidden>Keluar room</button></div><p id="verr" class="err"></p><div id="vsw" class="stack"></div><p class="muted">Pindah ke layar lain akan memutus suara.</p>';
 $('#vic').append(icon('vol',48));
-const toText=()=>go('/chat/',{c:S.cid,ch:textTarget()});$('#vchat').onclick=toText;
+const toText=()=>go('/chat/index.html',{c:S.cid,ch:textTarget()});$('#vchat').onclick=toText;
 const tb=el('button','ib');tb.setAttribute('aria-label','Kembali ke chat teks');tb.append(icon('chat',24));tb.onclick=toText;$('#acts').append(tb);
 function drawSwitch(){const box=$('#vsw');box.replaceChildren();
-  [['text','Pindah ke channel teks','hash','/chat/'],['voice','Channel suara lain','vol','/voice/']].forEach(([t,l,ic,path])=>{const list=S.chans.filter(x=>(x.type||'text')===t&&x.id!==S.chid);if(!list.length)return;
+  [['text','Pindah ke channel teks','hash','/chat/index.html'],['voice','Channel suara lain','vol','/voice/index.html']].forEach(([t,l,ic,path])=>{const list=S.chans.filter(x=>(x.type||'text')===t&&x.id!==S.chid);if(!list.length)return;
     box.append(el('small','sec',l));list.forEach(x=>{const r=el('button','li');r.append(icon(ic,20),el('b','grow',x.name),icon('next',18));r.onclick=()=>go(path,{c:S.cid,ch:x.id});box.append(r)})})}
 let ch=null,vc=null,watching=null;
 S.onChange=()=>{ch=S.chans.find(x=>x.id===S.chid);drawSwitch();if(!ch){setTitle('Suara',S.comms.find(x=>x.id===S.cid)?.name||'');$('#vempty').textContent='Pilih channel suara dari tab Channel.';return}
-if(ch.type!=='voice')return go('/chat/',{c:S.cid,ch:ch.id});
+if(ch.type!=='voice')return go('/chat/index.html',{c:S.cid,ch:ch.id});
 setTitle(ch.name,'Ruang suara');$('#vtitle').textContent=ch.name;
 if(watching!==ch.id){watching=ch.id;onSnapshot(collection(db,`communities/${S.cid}/channels/${ch.id}/voice`),s=>{$('#vempty').hidden=s.size>0;$('#vlist').replaceChildren(...s.docs.map(d=>{const u=S.users.get(d.id)||{},r=el('div','vu');r.append(av(u,44),nameEl(u.name?u:{name:d.id}));r.classList.add('clk');r.onclick=()=>viewProfile(d.id);return r}))})}};
 S.onChange();
