@@ -4,6 +4,8 @@ import{api}from'/shared.js';
 const cap=window.Capacitor,P=cap?.Plugins?.PushNotifications;
 const native=()=>!!cap?.isNativePlatform?.()&&!!P;
 const KEY='coa_push_token';
+// Server lokal Capacitor membuka index.html root untuk path tanpa ekstensi, jadi buat eksplisit
+const fixUrl=u=>u.replace(/^\/(chat|dm|channel)\/(\?|$)/,'/$1/index.html$2');
 let started=false;
 
 // Dipanggil sekali setelah login (lewat boot di shared.js): minta izin notifikasi, buat channel, daftarkan token ke server
@@ -17,7 +19,7 @@ export async function initPush(){
     P.addListener('registration',t=>{localStorage.setItem(KEY,t.value);api('/api/push',{kind:'register',token:t.value}).catch(()=>{})});
     P.addListener('registrationError',e=>console.error('push register gagal',e));
     // Ketuk notifikasi: buka halaman tujuan (hanya path internal)
-    P.addListener('pushNotificationActionPerformed',a=>{const u=a.notification?.data?.url;if(typeof u==='string'&&u.startsWith('/')&&!u.startsWith('//'))location.href=u});
+    P.addListener('pushNotificationActionPerformed',a=>{const u=a.notification?.data?.url;if(typeof u==='string'&&u.startsWith('/')&&!u.startsWith('//'))location.href=fixUrl(u)});
     await P.register();
   }catch(e){console.error('initPush',e)}
 }
