@@ -1,5 +1,5 @@
 // Daftar host resmi. Backend menolak request dari origin lain (web hasil clone).
-export const APP_HOSTS = ['circle-media-nyr-app.vercel.app', 'localhost', '127.0.0.1'];
+export const APP_HOSTS = ['circle-media-nyr-app.vercel.app', 'localhost', '127.0.0.1', 'appassets.androidplatform.net'];
 
 export function isAllowedOrigin(origin) {
   try {
