@@ -1,0 +1,11 @@
+{
+  "appId": "com.circlemedia.nyr.app",
+  "appName": "Claude of Anarchy",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
