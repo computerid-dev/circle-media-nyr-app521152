@@ -4,9 +4,14 @@ import{getFirestore,collection,doc,getDoc,setDoc,addDoc,deleteDoc,updateDoc,onSn
 export{collection,doc,getDoc,setDoc,addDoc,deleteDoc,updateDoc,onSnapshot,query,orderBy,limit,where,arrayUnion,arrayRemove,signInWithEmailAndPassword,onAuthStateChanged,signOut};
 export const $=s=>document.querySelector(s);
 export const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+// Di APK halaman dimuat dari dalam aplikasi (https://localhost), jadi panggilan /api/* diarahkan ke server Vercel
+const NATIVE=!!(window.Capacitor&&((window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())||window.Capacitor.platform==='android'));
+// Origin bawaan WebView (WebViewAssetLoader) juga dianggap APK, supaya /api/* tetap ke server Vercel
+const IN_APP=NATIVE||location.hostname==='appassets.androidplatform.net';
+export const API_BASE=IN_APP?'https://circle-media-nyr-app.vercel.app':'';
 export let auth=null,db=null,cfgError='';
-try{const r=await fetch('/api/config'),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'HTTP '+r.status);auth=getAuth(initializeApp(d));db=getFirestore(auth.app)}catch(e){cfgError=e.message}
-export const api=async(p,b)=>{const t=await auth.currentUser.getIdToken(),r=await fetch(p,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify(b||{})}),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Permintaan gagal');return d};
+try{const r=await fetch(API_BASE+'/api/config'),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'HTTP '+r.status);auth=getAuth(initializeApp(d));db=getFirestore(auth.app)}catch(e){cfgError=e.message}
+export const api=async(p,b)=>{const t=await auth.currentUser.getIdToken(),r=await fetch(API_BASE+p,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify(b||{})}),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Permintaan gagal');return d};
 export const urls=new Map();
 export async function load(keys,names){const m=[...new Set(keys.filter(k=>k&&!urls.has(k)))];for(let i=0;i<m.length;i+=30){const part=m.slice(i,i+30),nm={};if(names)part.forEach(k=>{if(names[k])nm[k]=names[k]});try{const{urls:u}=await api('/api/download-url',{keys:part,names:nm});for(const k in u)urls.set(k,u[k])}catch(e){console.error(e)}}}
 export async function upload(f,type){const ct=type||f.type||'application/octet-stream';const{key,uploadUrl}=await api('/api/upload-url',{contentType:ct,size:f.size});let r;try{r=await fetch(uploadUrl,{method:'PUT',headers:{'Content-Type':ct},body:f})}catch{throw Error('Upload gagal: koneksi terputus atau CORS bucket belum diatur')}if(!r.ok)throw Error('Upload gagal ('+r.status+'), cek CORS dan izin bucket');return key}
@@ -76,7 +81,7 @@ sheet('Profil',b=>{const top=el('div','pf'),t=el('div','grow'),n=nameEl(u);n.cla
 if(u.bio)b.append(el('p','pbio',u.bio));
 const mem=S.mems.get(uid);if(mem){const r=el('div','chips');r.append(tag(mem.roleName,mem.color));b.append(r)}
 b.append(el('small','muted',online(u)?'Sedang online':(u.lastSeen?'Terakhir online '+ago(u.lastSeen):'Belum pernah online')));
-if(uid!==S.me.uid){const act=el('div','row2');const dm=el('button','','Kirim pesan');dm.onclick=()=>go('/dm/',{c:S.cid,u:uid});act.append(dm);
+if(uid!==S.me.uid){const act=el('div','row2');const dm=el('button','','Kirim pesan');dm.onclick=()=>go('/dm/index.html',{c:S.cid,u:uid});act.append(dm);
 if(isStaffRole(S.me)&&!isStaffRole(u)){const bb=el('button','w','Kelola lencana');bb.onclick=()=>badgeSheet(uid);act.append(bb)}b.append(act)}
 if(!isStaffRole(u)&&(u.badges||[]).length){b.append(el('small','sec','Lencana'));const g=el('div','bgrid');(u.badges||[]).filter(badgeOf).forEach(id=>{const c=el('div','bchoice'+(u.badge===id?' on':''));c.append(badgeImg(id,56),el('span','',badgeOf(id).name));g.append(c)});b.append(g)}
 else if(isStaffRole(u)&&u.badge&&canWear(u,u.badge)){b.append(el('small','sec','Lencana dipakai'));const g=el('div','bgrid'),c=el('div','bchoice on');c.append(badgeImg(u.badge,56),el('span','',badgeOf(u.badge).name));g.append(c);b.append(g)}})}
@@ -125,7 +130,7 @@ b.append(el('p','muted','Pilih member, lalu beri atau cabut lencananya.'));
 list.forEach(([uid,u])=>{const r=el('button','li'),i=el('div','grow');i.append(nameEl(u),el('small','muted','@'+(u.username||'-')+' - '+((u.badges||[]).filter(badgeOf).length)+' lencana'));r.append(av(u,40),i,icon('next',18));r.onclick=()=>badgeSheet(uid);b.append(r)})})}
 export const go=(path,p={})=>{const q=new URLSearchParams(Object.entries(p).filter(([,v])=>v));{const qs=q.toString();location.href=path+(qs?'?'+qs:'')}};
 // Pemilih di layar Chat: chat komunitas atau pesan pribadi terenkripsi
-export function chatSeg(active){const w=el('div','seg');[['c','Komunitas'],['p','Pribadi']].forEach(([k,l])=>{const b=el('button',k===active?'on':'',l);b.onclick=()=>{if(k===active)return;k==='c'?go('/chat/',{c:S.cid,ch:textTarget()}):go('/dm/',{c:S.cid})};w.append(b)});return w}
+export function chatSeg(active){const w=el('div','seg');[['c','Komunitas'],['p','Pribadi']].forEach(([k,l])=>{const b=el('button',k===active?'on':'',l);b.onclick=()=>{if(k===active)return;k==='c'?go('/chat/index.html',{c:S.cid,ch:textTarget()}):go('/dm/index.html',{c:S.cid})};w.append(b)});return w}
 export const setTitle=(t,s='')=>{$('#title').textContent=t;$('#sub').textContent=s};
 const isText=x=>(x?.type||'text')==='text';
 // Channel teks tujuan tombol Chat: yang sedang dibuka, atau terakhir dibuka, atau yang pertama
@@ -172,7 +177,7 @@ ren.onclick=async()=>{const v=await ask('Ganti nama komunitas',[['name','Nama ko
 del.onclick=()=>save({avatar:null});
 b.append(img,nm,pick,ren,file);if(c.avatar)b.append(del)})}
 export const canCreateCommunity=()=>isStaffRole(S.me);
-export async function newCommunity(){if(!canCreateCommunity()){alert('Hanya owner dan admin yang boleh membuat komunitas');return}const v=await ask('Komunitas baru',[['name','Nama komunitas']]);if(v?.name.trim()){const r=await addDoc(collection(db,'communities'),{name:v.name.trim().slice(0,40),createdBy:S.me.uid,createdAt:Date.now()});go('/chat/',{c:r.id})}}
+export async function newCommunity(){if(!canCreateCommunity()){alert('Hanya owner dan admin yang boleh membuat komunitas');return}const v=await ask('Komunitas baru',[['name','Nama komunitas']]);if(v?.name.trim()){const r=await addDoc(collection(db,'communities'),{name:v.name.trim().slice(0,40),createdBy:S.me.uid,createdAt:Date.now()});go('/chat/index.html',{c:r.id})}}
 export async function newChannel(){const v=await ask('Channel baru',[['name','Nama channel'],['type','Jenis','select','text',[['text','Teks'],['voice','Suara']]]]);if(v?.name.trim())await addDoc(collection(db,`communities/${S.cid}/channels`),{name:v.name.trim().slice(0,30),type:v.type,createdAt:Date.now()})}
 function watchCommunity(id){S.cid=id;
 stops.chans=onSnapshot(collection(db,`communities/${id}/channels`),s=>{S.chans=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.name.localeCompare(b.name));changed()});
@@ -180,7 +185,7 @@ stops.roles=onSnapshot(collection(db,`communities/${id}/roles`),s=>{S.roles=s.do
 stops.mems=onSnapshot(collection(db,`communities/${id}/members`),s=>{S.mems=new Map(s.docs.map(d=>[d.id,d.data()]));changed()});
 stops.people=onSnapshot(collection(db,`communities/${id}/people`),s=>{S.people=new Set(s.docs.map(d=>d.id));changed()})}
 
-const TABS=[['chat','/chat/','Chat','chat'],['channel','/channel/','Channel','hash'],['members','/members/','Anggota','users'],['settings','/settings/','Pengaturan','cog']];
+const TABS=[['chat','/chat/index.html','Chat','chat'],['channel','/channel/index.html','Channel','hash'],['members','/members/index.html','Anggota','users'],['settings','/settings/index.html','Pengaturan','cog']];
 // Dipanggil tiap halaman: cek login, bangun kerangka (header, tab bawah), kembalikan area isi
 export function boot(opts={}){return new Promise(resolve=>{
 if(!auth){document.body.textContent='Backend belum siap: '+cfgError;return}
@@ -191,7 +196,7 @@ const s=await getDoc(doc(db,'users',user.uid));if(!s.exists()){await signOut(aut
 S.opts=opts;S.me={uid:user.uid,...s.data()};const q=new URLSearchParams(location.search);S.cid=q.get('c');S.chid=q.get('ch');
 document.body.innerHTML='<div id="app"><div id="bg"></div><header id="top"><button class="cbtn" id="cbtn" aria-label="Ganti komunitas"><img src="/logo.png" alt="Claude of Anarchy"></button><div class="ttl"><strong id="title"></strong><small id="sub"></small></div><div id="acts"></div></header><main id="content"></main><nav id="tabs"></nav></div>';
 $('#tabs').append(...TABS.map(([k,p,l,i])=>{const b=el('button','tab'+(opts.tab===k?' on':''));b.append(icon(i,24),el('span','',l));b.onclick=()=>go(p,{c:S.cid,ch:k==='chat'?textTarget():null});return b}));
-$('#cbtn').onclick=()=>sheet('Komunitas',(b,close)=>{S.comms.forEach(c=>{const r=el('button','li'+(c.id===S.cid?' on':'')),a=el('img','clogo');a.src=c.avatar||'/logo.png';a.alt='';r.append(a,el('b','grow',c.name));if(isApproved(c.id)===false)r.append(el('small','muted','Belum bergabung'));r.onclick=()=>go('/chat/',{c:c.id});b.append(r)});
+$('#cbtn').onclick=()=>sheet('Komunitas',(b,close)=>{S.comms.forEach(c=>{const r=el('button','li'+(c.id===S.cid?' on':'')),a=el('img','clogo');a.src=c.avatar||'/logo.png';a.alt='';r.append(a,el('b','grow',c.name));if(isApproved(c.id)===false)r.append(el('small','muted','Belum bergabung'));r.onclick=()=>go('/chat/index.html',{c:c.id});b.append(r)});
 if(isStaffRole(S.me)){const n=el('button','','+ Komunitas baru');n.onclick=()=>{close();newCommunity()};b.append(n)}});
 const drawC=()=>{$('#cbtn').title=S.comms.find(c=>c.id===S.cid)?.name||'Claude of Anarchy'};
 function watchAccess(id){if(S.watchedAcc.has(id))return;S.watchedAcc.add(id);
@@ -204,7 +209,7 @@ g.replaceChildren();const box=el('div','panel');
 box.append(el('h3','',c.name),el('p','muted','Kamu belum menjadi anggota komunitas ini. Minta bergabung, lalu tunggu persetujuan admin atau owner.'));
 if(S.pending.get(c.id)){const w=el('button','','Menunggu persetujuan');w.disabled=true;const x=el('button','w','Batalkan permintaan');x.onclick=()=>cancelJoin(c.id).catch(e=>alert(e.message));box.append(w,x)}
 else{const r=el('button','','Minta bergabung');r.onclick=async()=>{r.disabled=true;try{await requestJoin(c.id)}catch(e){alert(e.message);r.disabled=false}};box.append(r)}
-const o=el('button','w','Lihat komunitas lain');o.onclick=()=>go('/channel/');box.append(o);g.append(box)}
+const o=el('button','w','Lihat komunitas lain');o.onclick=()=>go('/channel/index.html');box.append(o);g.append(box)}
 // Mulai memantau komunitas hanya kalau sudah disetujui; kalau belum, tampilkan layar minta bergabung
 function sync(){if(S.cid&&!S.started.has(S.cid)&&isApproved(S.cid)===true){S.started.add(S.cid);watchCommunity(S.cid)}
 if(!S.cid&&S.opts.needCommunity){const f=S.comms.find(c=>isApproved(c.id)===true);if(f){history.replaceState(null,'','?c='+f.id);S.cid=f.id;S.started.add(f.id);watchCommunity(f.id)}}
@@ -215,7 +220,7 @@ onSnapshot(collection(db,'badges'),q=>{BADGES.length=0;BADGES.push(...BASE_BADGE
 // Notifikasi mention: hanya di website (bel di header + popup), tidak ada push ke luar
 {let first=true;const baseTitle=document.title,bell=el('button','ib'),dot=el('span','ndot');bell.setAttribute('aria-label','Notifikasi');bell.append(icon('bell',24),dot);$('#acts').prepend(bell);S.notifs=[];
 const viewing=n=>location.pathname.startsWith('/chat')&&S.cid===n.cid&&S.chid===n.chid&&document.visibilityState==='visible';
-const openN=d=>{updateDoc(d.ref,{read:true}).catch(()=>{});const n=d.data();go('/chat/',{c:n.cid,ch:n.chid})};
+const openN=d=>{updateDoc(d.ref,{read:true}).catch(()=>{});const n=d.data();go('/chat/index.html',{c:n.cid,ch:n.chid})};
 const head=n=>n.type==='all'?(n.fromName||'Seseorang')+' menyebut semua orang':(n.fromName||'Seseorang')+' menyebut kamu';
 const toast=d=>{const n=d.data(),t=el('button','toast');t.append(el('b','',head(n)),el('small','','#'+(n.chName||'channel')+' - '+(n.text||'')));
 t.onclick=()=>{t.remove();openN(d)};document.body.append(t);setTimeout(()=>t.classList.add('show'),20);setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300)},7000)};
