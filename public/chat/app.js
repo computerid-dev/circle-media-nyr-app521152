@@ -90,11 +90,11 @@ function render(){MC=mctx();const b=$('#msgs'),q=$('#q').value.trim().toLowerCas
 function drawBar(ch){const bar=$('#chbar');bar.replaceChildren();if(!S.cid)return;
   const p=el('button','chpill');p.append(icon('hash',22),el('b','',ch?ch.name:'pilih channel'),icon('chev',18));
   p.onclick=()=>sheet('Channel',(b,close)=>{[['text','Teks'],['voice','Suara']].forEach(([t,l])=>{const list=S.chans.filter(x=>(x.type||'text')===t);if(!list.length)return;b.append(el('small','sec',l));
-    list.forEach(x=>{const r=el('button','li'+(x.id===S.chid?' on':''));r.append(icon(t==='text'?'hash':'vol',20),el('b','grow',x.name));r.onclick=()=>go(t==='voice'?'/voice/':'/chat/',{c:S.cid,ch:x.id});b.append(r)})});
+    list.forEach(x=>{const r=el('button','li'+(x.id===S.chid?' on':''));r.append(icon(t==='text'?'hash':'vol',20),el('b','grow',x.name));r.onclick=()=>go(t==='voice'?'/voice/index.html':'/chat/index.html',{c:S.cid,ch:x.id});b.append(r)})});
     if(!S.chans.length)b.append(el('p','empty','Belum ada channel.'));if(canManage()){const n=el('button','w','+ Channel baru');n.onclick=()=>{close();newChannel()};b.append(n)}});
   const mb=el('button','ib'),more=el('button','ib');mb.setAttribute('aria-label','Anggota');more.setAttribute('aria-label','Menu');mb.append(icon('users',24));more.append(icon('dots',24));
-  mb.onclick=()=>go('/members/',{c:S.cid});
-  more.onclick=()=>sheet('Menu',(b,close)=>{const a=el('button','li');a.append(icon('hash',20),el('b','grow','Semua channel dan komunitas'));a.onclick=()=>go('/channel/',{c:S.cid});b.append(a);
+  mb.onclick=()=>go('/members/index.html',{c:S.cid});
+  more.onclick=()=>sheet('Menu',(b,close)=>{const a=el('button','li');a.append(icon('hash',20),el('b','grow','Semua channel dan komunitas'));a.onclick=()=>go('/channel/index.html',{c:S.cid});b.append(a);
     if(canBg()){const g=el('button','li');g.append(icon('image',20),el('b','grow','Ganti background'));g.onclick=()=>{close();bgSheet()};b.append(g)}
     if(canManage()){const n=el('button','li');n.append(icon('plus',20),el('b','grow','Buat channel'));n.onclick=()=>{close();newChannel()};b.append(n)}});
   bar.append(p,el('span','grow'),mb,more)}
@@ -102,7 +102,7 @@ function drawBar(ch){const bar=$('#chbar');bar.replaceChildren();if(!S.cid)retur
 S.onChange=()=>{
   if(S.cid&&!S.chid){const t=S.chans.find(x=>(x.type||'text')==='text');if(t){S.chid=t.id;history.replaceState(null,'',`?c=${S.cid}&ch=${t.id}`)}}
   const ch=S.cid?S.chans.find(x=>x.id===S.chid):null;
-  if(ch?.type==='voice')return go('/voice/',{c:S.cid,ch:ch.id});
+  if(ch?.type==='voice')return go('/voice/index.html',{c:S.cid,ch:ch.id});
   if(ch)rememberText(ch.id);
   setTitle(S.cid?cname():'Claude of Anarchy','Server Komunitas');drawBar(ch);setEnabled(!!ch);
   if(!ch){watching=null;stop?.();stop=null;last=[];showEmpty(S.cid?'Belum ada channel teks. Buka tab Channel untuk membuatnya.':'Kamu belum bergabung ke komunitas mana pun. Ketuk huruf di pojok kiri atas atau buka tab Channel untuk meminta bergabung.');return}
