@@ -3,7 +3,7 @@ import{sendPush}from'/push.js';
 import{unlock,tryLocal,keyReady,peerKey,enc,dec,encBytes,decBytes,fingerprint,pairId}from'/e2e.js';
 const c=await boot({tab:'chat'});
 const peer=new URLSearchParams(location.search).get('u');
-const back=()=>go('/dm/',{c:S.cid});
+const back=()=>go('/dm/index.html',{c:S.cid});
 const ago=t=>{const d=new Date(t),n=new Date();return d.toDateString()===n.toDateString()?hhmm(t):d.toLocaleDateString('id-ID',{day:'numeric',month:'short'})};
 let stop=null;
 
@@ -17,7 +17,7 @@ function listMode(){
     if(!keyReady()){const b=el('button','w','Buka kunci chat untuk melihat isi pesan');b.onclick=async()=>{try{if(await unlock())fill()}catch(e){alert(e.message)}};box.append(b)}
     if(!convs.length){box.append(el('p','empty','Belum ada chat pribadi. Buka profil anggota di komunitas, lalu ketuk Kirim pesan.'));return}
     convs.forEach(d=>{const m=d.data(),other=m.members.find(x=>x!==S.me.uid),u=S.users.get(other)||{name:'Pengguna'},r=el('button','li'),i=el('div','grow'),top=el('div'),p=el('small','muted',prev.get(d.id)||'Pesan terenkripsi');
-      top.append(nameEl(u));i.append(top,p);r.append(av(u,48),i,el('small','muted',ago(m.updatedAt||0)));r.onclick=()=>go('/dm/',{c:S.cid,u:other});box.append(r)})};
+      top.append(nameEl(u));i.append(top,p);r.append(av(u,48),i,el('small','muted',ago(m.updatedAt||0)));r.onclick=()=>go('/dm/index.html',{c:S.cid,u:other});box.append(r)})};
   async function fill(){for(const d of convs){const m=d.data(),other=m.members.find(x=>x!==S.me.uid),pub=S.users.get(other)?.pub;if(!m.last||!pub||!keyReady())continue;
     try{const t=await dec(await peerKey(pub),m.last.iv,m.last.ct);prev.set(d.id,(m.last.from===S.me.uid?'Kamu: ':'')+t.slice(0,60))}catch{}}draw()}
   onSnapshot(query(collection(db,'dms'),where('members','array-contains',S.me.uid)),s=>{convs=s.docs.sort((a,b)=>(b.data().updatedAt||0)-(a.data().updatedAt||0));tryLocal().then(fill)},e=>{$('#msgs').replaceChildren(el('p','empty','Gagal memuat: '+e.message))});
