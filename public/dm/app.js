@@ -1,4 +1,5 @@
 import{boot,S,$,el,icon,sheet,nameEl,av,hhmm,go,setTitle,chatSeg,viewProfile,db,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,orderBy,limit,where,load,urls,upload,imageData}from'/shared.js';
+import{sendPush}from'/push.js';
 import{unlock,tryLocal,keyReady,peerKey,enc,dec,encBytes,decBytes,fingerprint,pairId}from'/e2e.js';
 const c=await boot({tab:'chat'});
 const peer=new URLSearchParams(location.search).get('u');
@@ -87,7 +88,8 @@ function threadMode(){
   // Kirim: teks sandi (iv + ct) ke Firestore; isi file/VN dienkripsi lalu diunggah sebagai blob acak
   async function post(plain,preview,extra){const key=await peerKey(peerU().pub),x=await enc(key,plain),p=preview===plain?x:await enc(key,preview),now=Date.now();
     await setDoc(doc(db,'dms',pid),{members:[S.me.uid,peer].sort(),updatedAt:now,last:{from:S.me.uid,iv:p.iv,ct:p.ct}});
-    await addDoc(collection(db,`dms/${pid}/messages`),{from:S.me.uid,iv:x.iv,ct:x.ct,createdAt:now,...(extra||{})})}
+    await addDoc(collection(db,`dms/${pid}/messages`),{from:S.me.uid,iv:x.iv,ct:x.ct,createdAt:now,...(extra||{})});
+    sendPush({kind:'dm',pid,cid:S.cid||''})}
   // Lampiran <= 560 KB (VN, gambar, file kecil) disimpan terenkripsi langsung di Firestore; yang lebih besar lewat bucket
   async function sendAtt(blob,meta,preview){busy=true;lock();const old=$('#text').placeholder;$('#text').placeholder='Mengenkripsi dan mengirim...';
     try{if((blob.type||'').startsWith('image/')&&blob.type!=='image/gif'&&blob.size>300*1024){try{const du=await imageData(blob);blob=await(await fetch(du)).blob();meta.type=blob.type;meta.size=blob.size;meta.name=(meta.name||'foto').replace(/\.[^.]+$/,'')+'.jpg'}catch{}}
