@@ -1,5 +1,6 @@
 import{boot,S,$,el,icon,chatSeg,sheet,nameEl,tag,av,hhmm,RX,canManage,go,setTitle,newChannel,viewProfile,canBg,bgSheet,rememberText,load,urls,upload,imageData,audioData,db,collection,addDoc,deleteDoc,updateDoc,onSnapshot,query,orderBy,limit,arrayUnion,arrayRemove}from'/shared.js';
 import{inCommunity,isStaffRole}from'/shared.js';
+import{sendPush}from'/push.js';
 const c=await boot({needCommunity:true,tab:'chat'});
 c.classList.add('chat');
 c.innerHTML='<div class="chbar" id="sw"></div><div class="chbar" id="chbar"></div><div id="sbar" hidden><input id="q" placeholder="Cari pesan atau nama"></div><div id="msgs"></div><div id="drop" hidden>Lepas file di sini (gambar, video, audio, dokumen)</div><div id="picked" hidden><span id="pname" class="grow"></span><button type="button" class="w mini" id="pclear" aria-label="Batalkan file">x</button></div><form class="send" id="send"><button type="button" class="rbtn" id="attach" aria-label="Lampirkan file"></button><div class="field"><input id="text" placeholder="Kirim pesan..." autocomplete="off"><button type="button" class="ibtn" id="emo" aria-label="Emoji"></button></div><div class="recbar" id="recbar" hidden><span class="recdot"></span><b id="rtime">0:00</b><span class="grow muted">Merekam... ketuk kirim untuk mengirim</span><button type="button" class="w mini" id="rcancel">Batal</button></div><button type="button" class="rbtn" id="mic" aria-label="Rekam VN"></button><button class="fab" id="sendBtn" aria-label="Kirim"></button></form><input id="file" type="file" hidden>';
@@ -120,7 +121,7 @@ $('#send').onsubmit=async e=>{e.preventDefault();if(!ready)return;
       else{const t=typeOf(f);m.fileKey=await upload(f,t);m.fileType=t;m.fileName=f.name.slice(0,120);m.fileSize=f.size}}
     const mm=found(text);if(mm.all&&!canAll())mm.all=false;mm.ids.delete(S.me.uid);if(mm.ids.size)m.mentions=[...mm.ids];if(mm.all)m.mentionAll=true;
     await addDoc(collection(db,`communities/${S.cid}/channels/${S.chid}/messages`),m);
-    notify(mm,text).catch(()=>{});
+    notify(mm,text).catch(()=>{});if(mm.all||mm.ids.size)sendPush({kind:'channel',cid:S.cid,chid:S.chid,mentions:[...mm.ids],all:!!mm.all,text:text.slice(0,100)});
     $('#text').value='';sug.hidden=true;setPicked(null)}catch(x){alert(x.message)}
   $('#sendBtn').disabled=!ready};
 // ---- Rekam VN (ketuk mic untuk mulai, ketuk kirim untuk mengirim, Batal untuk membuang) ----
